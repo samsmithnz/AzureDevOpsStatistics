@@ -1,6 +1,7 @@
+
 CLS
-$pat = ''
-$InitialOrganizationName = ""
+$pat = 'lsyzpk2ic75rbkaandvuoo7rxq2brrsj7vomiklygvrzlwrdedga'
+$InitialOrganizationName = "samsmithnz"
 $organization = $InitialOrganizationName
 
 #Initialization
@@ -24,6 +25,7 @@ $artifacts = @()
 $builds = @()
 $releases = @()
 $repos = @()
+$prs = @()
 $workItems = @()
 #Foreach ($org in $organzationsJson){
     #This next part is a bit gross, but I can't get PowerShell to convert it into an object. The best I can do is isolate the name property
@@ -182,7 +184,7 @@ $workItems = @()
         $workItems += $projectWorkItems.values | ConvertTo-Json -Depth 10 | ConvertFrom-Json | Get-Unique -AsString
 
 
-        #TODO: Repos
+        #Repos
         #GET https://dev.azure.com/{organization}/{project}/_apis/git/repositories?api-version=6.0
         $projectRepos = @()
         $uri = "https://dev.azure.com/$organization/$($project.name)/_apis/git/repositories?api-version=6.0"
@@ -198,8 +200,15 @@ $workItems = @()
         }
         $repos += $projectRepos | ConvertTo-Json -Depth 10 | ConvertFrom-Json | Get-Unique -AsString
 
-        #TODO: PRs
+        #PRs
+        #Loop through each Repo for PR's
         #GET https://dev.azure.com/{organization}/{project}/_apis/git/repositories/{repositoryId}/pullrequests?api-version=6.0
+        Foreach ($projectRepo in $projectRepos){
+            $uri = "https://dev.azure.com/$organization/$($project.name)/_apis/git/repositories/$($projectRepo.id)/pullrequests?api-version=6.0"
+            $prsJson = Invoke-RestMethod -Uri $uri -ContentType application/json -Headers @{Authorization=("Basic {0}" -f $base64AuthInfo)} -Method Get -ErrorAction Stop
+            $projectRepoPRs = $prsJson.value | ConvertTo-Json -Depth 10 | ConvertFrom-Json
+            $prs += $projectRepoPRs | ConvertTo-Json -Depth 10 | ConvertFrom-Json | Get-Unique -AsString
+        }
 
         #TODO: TFVS (no PRs)
 
@@ -216,20 +225,25 @@ $users | ft DisplayName, MailAddress, CreatedDate, LastAccessedDate, DaysSinceLa
 
 $TotalBuilds = $builds 
 Write-Host "Total builds: $($TotalBuilds.Count)" 
-$TotalBuilds | Select Name, Status, Result, QueueTime | Group-Object -Property Status, Result | Select Count, Name | ft
+#$TotalBuilds | Select Name, Status, Result, QueueTime | Group-Object -Property Status, Result | Select Count, Name | ft
 
 $TotalReleases = $releases 
 Write-Host "Total releases: $($TotalReleases.Count)" 
-$TotalReleases | Select LastEnvironmentStatus | Group-Object -Property LastEnvironmentStatus | Select Count, Name | ft
+#$TotalReleases | Select LastEnvironmentStatus | Group-Object -Property LastEnvironmentStatus | Select Count, Name | ft
 
 $TotalWorkItems = $workItems 
 Write-Host "Total work items: $($workItems.Count)" 
-$TotalWorkItems.fields | Select System.WorkItemType, System.ChangedDate | Group-Object -Property System.WorkItemType | Select Count, Name | ft
+#$TotalWorkItems.fields | Select System.WorkItemType, System.ChangedDate | Group-Object -Property System.WorkItemType | Select Count, Name | ft
 
 Write-Host "Total artifact feeds: $($artifacts.Count)"
-$artifacts | Select name
+#$artifacts | Select name
 
 $TotalRepos = $repos 
-Write-Host "Total Repos: $($repos.Count)" 
-Write-Host "Repos over 2GB:"
+Write-Host "Total Repos: $($TotalRepos.Count)" 
+$TotalReposOver2GB = ($TotalRepos | Where-Object size -gt $(2 * ([Math]::Pow(1000,3)))).Count 
+Write-Host "Total Repos over 2GB: $($TotalReposOver2GB)"
 $TotalRepos | Select name, size | Where-Object size -gt $(2 * ([Math]::Pow(1000,3))) | ft
+
+
+$TotalPRs = $prs 
+Write-Host "Total PRs: $($TotalPRs.Count)" 
