@@ -1,5 +1,5 @@
 CLS
-$pat = 'mf5tlpzvyb33xhlmtr4xz27k6sewulgqzix6nvotp5un5ybbymza'
+$pat = ''
 $InitialOrganizationName = ""
 $organization = $InitialOrganizationName
 
