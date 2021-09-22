@@ -1,6 +1,6 @@
 
 CLS
-$pat = 'lsyzpk2ic75rbkaandvuoo7rxq2brrsj7vomiklygvrzlwrdedga'
+$pat = ''
 $InitialOrganizationName = "samsmithnz"
 $organization = $InitialOrganizationName
 
@@ -26,6 +26,7 @@ $builds = @()
 $releases = @()
 $repos = @()
 $prs = @()
+$files = @()
 $workItems = @()
 #Foreach ($org in $organzationsJson){
     #This next part is a bit gross, but I can't get PowerShell to convert it into an object. The best I can do is isolate the name property
@@ -104,6 +105,9 @@ $workItems = @()
 
     #Loop through each project
     Foreach ($project in $projects){
+
+    if ($project.Name -eq "SamLearnsAzure")
+    {
 
         # Build runs
         $uri = "https://dev.azure.com/$organization/$($project.name)/_apis/build/builds?api-version=5.1"
@@ -202,13 +206,15 @@ $workItems = @()
 
         #PRs
         #Loop through each Repo for PR's
-        #GET https://dev.azure.com/{organization}/{project}/_apis/git/repositories/{repositoryId}/pullrequests?api-version=6.0
+        #GET https://dev.azure.com/{organization}/{project}/_apis/git/repositories/{repositoryId}/pullrequests?searchCriteria.status=completed&api-version=6.0
         Foreach ($projectRepo in $projectRepos){
-            $uri = "https://dev.azure.com/$organization/$($project.name)/_apis/git/repositories/$($projectRepo.id)/pullrequests?api-version=6.0"
+        if ($projectRepo.name -eq "SamLearnsAzure")
+        {
+            $uri = "https://dev.azure.com/$organization/$($project.name)/_apis/git/repositories/$($projectRepo.id)/pullrequests?searchCriteria.status=completed&api-version=6.0"
             $prsJson = Invoke-RestMethod -Uri $uri -ContentType application/json -Headers @{Authorization=("Basic {0}" -f $base64AuthInfo)} -Method Get -ErrorAction Stop
             $projectRepoPRs = $prsJson.value | ConvertTo-Json -Depth 10 | ConvertFrom-Json
             $prs += $projectRepoPRs | ConvertTo-Json -Depth 10 | ConvertFrom-Json | Get-Unique -AsString
-        }
+        }}
 
         #TODO: TFVS (no PRs)
 
@@ -216,12 +222,12 @@ $workItems = @()
 
         Write-Host "Scanning project $($project.name) ... ($($repos.Length) repos, $($builds.Length) builds, $($releases.Length) releases, and $($workItems.Length) work items found so far)" 
   
-    }
+    }}
 #}
 
 #results
-Write-Host "Total users: $($users.Length)" 
-$users | ft DisplayName, MailAddress, CreatedDate, LastAccessedDate, DaysSinceLastLogin, Origin, AssignementType, LicenseDisplayName, LicensingSource -auto
+#Write-Host "Total users: $($users.Length)" 
+#$users | ft DisplayName, MailAddress, CreatedDate, LastAccessedDate, DaysSinceLastLogin, Origin, AssignementType, LicenseDisplayName, LicensingSource -auto
 
 $TotalBuilds = $builds 
 Write-Host "Total builds: $($TotalBuilds.Count)" 
