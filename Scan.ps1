@@ -208,13 +208,14 @@ $workItems = @()
         #Loop through each Repo for PR's
         #GET https://dev.azure.com/{organization}/{project}/_apis/git/repositories/{repositoryId}/pullrequests?searchCriteria.status=completed&api-version=6.0
         Foreach ($projectRepo in $projectRepos){
-        if ($projectRepo.name -eq "SamLearnsAzure")
-        {
+        #if ($projectRepo.name -eq "SamLearnsAzure")
+        #{
             $uri = "https://dev.azure.com/$organization/$($project.name)/_apis/git/repositories/$($projectRepo.id)/pullrequests?searchCriteria.status=completed&api-version=6.0"
             $prsJson = Invoke-RestMethod -Uri $uri -ContentType application/json -Headers @{Authorization=("Basic {0}" -f $base64AuthInfo)} -Method Get -ErrorAction Stop
             $projectRepoPRs = $prsJson.value | ConvertTo-Json -Depth 10 | ConvertFrom-Json
             $prs += $projectRepoPRs | ConvertTo-Json -Depth 10 | ConvertFrom-Json | Get-Unique -AsString
-        }}
+        #}
+        }
 
         #TODO: TFVS (no PRs)
 
