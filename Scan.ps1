@@ -20,6 +20,7 @@ $orgRequestBody = "{
 #$orgResponseDetails = $orgResponse.dataProviders
 #$organzationsJson = $orgResponseDetails."ms.vss-features.my-organizations-data-provider".organizations
 
+$summary = @()
 $users = @()
 $artifacts = @()
 $builds = @()
@@ -59,7 +60,7 @@ $workItems = @()
     #        }
     #    }
     #}
-    #catch 
+    #catch r
     #{
     #    #do nothing 
     #    Write-Host "No access to $organization users"
@@ -94,7 +95,7 @@ $workItems = @()
                 Name = $_.name
                 LastUpdateTime = Get-Date $_.lastUpdateTime
             }
-        }
+        } #| Where-Object -Property name -eq "SamLearnsAzure"
     }
     catch 
     {
@@ -105,9 +106,6 @@ $workItems = @()
 
     #Loop through each project
     Foreach ($project in $projects){
-
-    if ($project.Name -eq "SamLearnsAzure")
-    {
 
         # Build runs
         $uri = "https://dev.azure.com/$organization/$($project.name)/_apis/build/builds?api-version=5.1"
@@ -169,7 +167,7 @@ $workItems = @()
 
         # Get work items by project
         $projectWorkItems = @()
-        $uri = "https://dev.azure.com/$organization/$($project.name)/_apis/wit/reporting/workitemrevisions?api-version=5.1&includeDeleted=false&includeLatestOnly=true"
+        $uri = "https://dev.azure.com/$organization/$($project.name)/_apis/wit/reporting/workitemrevisions?api-version=5.1&includeDeleted=false"#&includeLatestOnly=true"
         do {
 
             try
@@ -208,49 +206,70 @@ $workItems = @()
         #Loop through each Repo for PR's
         #GET https://dev.azure.com/{organization}/{project}/_apis/git/repositories/{repositoryId}/pullrequests?searchCriteria.status=completed&api-version=6.0
         Foreach ($projectRepo in $projectRepos){
-        #if ($projectRepo.name -eq "SamLearnsAzure")
-        #{
-            $uri = "https://dev.azure.com/$organization/$($project.name)/_apis/git/repositories/$($projectRepo.id)/pullrequests?searchCriteria.status=completed&api-version=6.0"
-            $prsJson = Invoke-RestMethod -Uri $uri -ContentType application/json -Headers @{Authorization=("Basic {0}" -f $base64AuthInfo)} -Method Get -ErrorAction Stop
-            $projectRepoPRs = $prsJson.value | ConvertTo-Json -Depth 10 | ConvertFrom-Json
-            $prs += $projectRepoPRs | ConvertTo-Json -Depth 10 | ConvertFrom-Json | Get-Unique -AsString
-        #}
+            #if ($projectRepo.name -eq "SamLearnsAzure")
+            #{
+                $uri = "https://dev.azure.com/$organization/$($project.name)/_apis/git/repositories/$($projectRepo.id)/pullrequests?searchCriteria.status=completed&top=1000&api-version=6.0"
+                $prsJson = Invoke-RestMethod -Uri $uri -ContentType application/json -Headers @{Authorization=("Basic {0}" -f $base64AuthInfo)} -Method Get -ErrorAction Stop
+                $projectRepoPRs = $prsJson.value | ConvertTo-Json -Depth 10 | ConvertFrom-Json
+                $prs += $projectRepoPRs | ConvertTo-Json -Depth 10 | ConvertFrom-Json | Get-Unique -AsString
+            #}
+
+            if ($projectRepo.name -eq "SamSmithNZ2017.Steam.Web")
+            {
+            #pause
+            }
+
+            $summary += (New-Object -TypeName PSObject -Property @{
+                    Organization = $organization
+                    Project = $project.name
+                    WorkItemCount = $projectWorkItems.values.Count
+                    Repo = $projectRepo.name
+                    RepoCompressedSizeInMB = "{0:n2}" -f [math]::Round(($projectRepo.size / 1000000),2) # dividing by a million, not exact - but close enough
+                    PRsCount = $(if($projectRepoPRs.Count -eq $null) {1} else {$projectRepoPRs.Count})
+                    BuildsAndReleasesCount = $builds.Count + $releases.Count
+                })
         }
 
-        #TODO: TFVS (no PRs)
+        #TODO: TFVCs (no PRs)
 
-
-
-        Write-Host "Scanning project $($project.name) ... ($($repos.Length) repos, $($builds.Length) builds, $($releases.Length) releases, and $($workItems.Length) work items found so far)" 
+        #TODO: Files - Can't get file sizes...
+        #GET https://dev.azure.com/{organization}/{project}/_apis/git/repositories/{repositoryId}/items?api-version=6.0
+        #if ($projectRepo.name -eq "SamLearnsAzure")
+        #{    
+        #    $uri = "https://dev.azure.com/$organization/$($project.name)/_apis/git/repositories/$($projectRepo.id)/items?recursionLevel=full&includeContentMetadata=true&api-version=6.0"
+        #    $filesJson = Invoke-RestMethod -Uri $uri -ContentType application/json -Headers @{Authorization=("Basic {0}" -f $base64AuthInfo)} -Method Get -ErrorAction Stop
+        #    $projectRepoFiles = $filesJson.value | ConvertTo-Json -Depth 10 | ConvertFrom-Json
+        #    $files += $projectRepoFiles | ConvertTo-Json -Depth 10 | ConvertFrom-Json | Get-Unique -AsString 
+        #}
+        
+        Write-Host "Scanning project $($project.name) ... ($($repos.Length) repos, $($prs.Length) prs, $($files.Length) files, $($builds.Length) builds, $($releases.Length) releases, and $($workItems.Length) work items found so far)" 
   
-    }}
+    }
 #}
 
 #results
 #Write-Host "Total users: $($users.Length)" 
 #$users | ft DisplayName, MailAddress, CreatedDate, LastAccessedDate, DaysSinceLastLogin, Origin, AssignementType, LicenseDisplayName, LicensingSource -auto
 
-$TotalBuilds = $builds 
-Write-Host "Total builds: $($TotalBuilds.Count)" 
-#$TotalBuilds | Select Name, Status, Result, QueueTime | Group-Object -Property Status, Result | Select Count, Name | ft
+Write-Host "Total builds: $($builds.Count)" 
+#$builds | Select Name, Status, Result, QueueTime | Group-Object -Property Status, Result | Select Count, Name | ft
 
-$TotalReleases = $releases 
-Write-Host "Total releases: $($TotalReleases.Count)" 
-#$TotalReleases | Select LastEnvironmentStatus | Group-Object -Property LastEnvironmentStatus | Select Count, Name | ft
+Write-Host "Total releases: $($releases.Count)" 
+#$releases | Select LastEnvironmentStatus | Group-Object -Property LastEnvironmentStatus | Select Count, Name | ft
 
-$TotalWorkItems = $workItems 
 Write-Host "Total work items: $($workItems.Count)" 
-#$TotalWorkItems.fields | Select System.WorkItemType, System.ChangedDate | Group-Object -Property System.WorkItemType | Select Count, Name | ft
+#$workItems.fields | Select System.WorkItemType, System.ChangedDate | Group-Object -Property System.WorkItemType | Select Count, Name | ft
 
 Write-Host "Total artifact feeds: $($artifacts.Count)"
 #$artifacts | Select name
 
-$TotalRepos = $repos 
-Write-Host "Total Repos: $($TotalRepos.Count)" 
-$TotalReposOver2GB = ($TotalRepos | Where-Object size -gt $(2 * ([Math]::Pow(1000,3)))).Count 
+Write-Host "Total Repos: $($repos.Count)" 
+$TotalReposOver2GB = ($repos | Where-Object size -gt $(2 * ([Math]::Pow(1000,3)))).Count 
 Write-Host "Total Repos over 2GB: $($TotalReposOver2GB)"
-$TotalRepos | Select name, size | Where-Object size -gt $(2 * ([Math]::Pow(1000,3))) | ft
+$repos | Select name, size | Where-Object size -gt $(2 * ([Math]::Pow(1000,3))) | ft
 
+Write-Host "Total PRs: $($prs.Count)" 
+Write-Host "Total Files: $($files.Count)" 
 
-$TotalPRs = $prs 
-Write-Host "Total PRs: $($TotalPRs.Count)" 
+Write-Host "Summary"
+$summary | Select Organization, Project, WorkItemCount, Repo, RepoCompressedSizeInMB, PRsCount, BuildsAndReleasesCount | ft Organization, Project, WorkItemCount, Repo, @{n='RepoCompressedSizeInMB';e={$_.RepoCompressedSizeInMB};align='right'}, PRsCount, BuildsAndReleasesCount
