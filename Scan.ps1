@@ -208,16 +208,22 @@ $workItems = @()
         Foreach ($projectRepo in $projectRepos){
             #if ($projectRepo.name -eq "SamLearnsAzure")
             #{
-                $uri = "https://dev.azure.com/$organization/$($project.name)/_apis/git/repositories/$($projectRepo.id)/pullrequests?searchCriteria.status=completed&top=1000&api-version=6.0"
-                $prsJson = Invoke-RestMethod -Uri $uri -ContentType application/json -Headers @{Authorization=("Basic {0}" -f $base64AuthInfo)} -Method Get -ErrorAction Stop
-                $projectRepoPRs = $prsJson.value | ConvertTo-Json -Depth 10 | ConvertFrom-Json
-                $prs += $projectRepoPRs | ConvertTo-Json -Depth 10 | ConvertFrom-Json | Get-Unique -AsString
+                $skipPRs = 0 # The number of pull requests to ignore. For example, to retrieve results 101-150, set top to 50 and skip to 100.
+                $topPRs = 100 # The number of pull requests to retrieve.
+                $uri = "https://dev.azure.com/$organization/$($project.name)/_apis/git/repositories/$($projectRepo.id)/pullrequests?searchCriteria.status=completed&`$skip=$skipPRs&`$top=$topPRs&api-version=6.0"
+                $projectReposPRs = @()
+                $tmp = @()
+                do {
+                    $prsJson = Invoke-RestMethod -Uri $uri -ContentType application/json -Headers @{Authorization=("Basic {0}" -f $base64AuthInfo)} -Method Get -ErrorAction Stop
+                    $projectRepoPRsJson = $prsJson.value | ConvertTo-Json -Depth 10 | ConvertFrom-Json
+                    $tmp = $projectRepoPRsJson | ConvertTo-Json -Depth 10 | ConvertFrom-Json | Get-Unique -AsString
+                    $projectReposPRs += $tmp
+                    $skipPRs += $topPRs
+                    $uri = "https://dev.azure.com/$organization/$($project.name)/_apis/git/repositories/$($projectRepo.id)/pullrequests?searchCriteria.status=all&`$skip=$skipPRs&`$top=$topPRs&api-version=6.0"
+                    #Write-Host "$($projectRepo.name) - $skipPRs = $($tmp.Count) , $uri"
+                } While ($tmp.Count -ge 100) #Loop while there are items in the list. Once we reach the end of the list, we will have 0 items    
+                $prs += $projectReposPRs
             #}
-
-            if ($projectRepo.name -eq "SamSmithNZ2017.Steam.Web")
-            {
-            #pause
-            }
 
             $summary += (New-Object -TypeName PSObject -Property @{
                     Organization = $organization
@@ -225,7 +231,7 @@ $workItems = @()
                     WorkItemCount = $projectWorkItems.values.Count
                     Repo = $projectRepo.name
                     RepoCompressedSizeInMB = "{0:n2}" -f [math]::Round(($projectRepo.size / 1000000),2) # dividing by a million, not exact - but close enough
-                    PRsCount = $(if($projectRepoPRs.Count -eq $null) {1} else {$projectRepoPRs.Count})
+                    PRsCount = $(if($projectReposPRs.Count -eq $null) {1} else {$projectReposPRs.Count})
                     BuildsAndReleasesCount = $builds.Count + $releases.Count
                 })
         }
@@ -272,4 +278,4 @@ Write-Host "Total PRs: $($prs.Count)"
 Write-Host "Total Files: $($files.Count)" 
 
 Write-Host "Summary"
-$summary | Select Organization, Project, WorkItemCount, Repo, RepoCompressedSizeInMB, PRsCount, BuildsAndReleasesCount | ft Organization, Project, WorkItemCount, Repo, @{n='RepoCompressedSizeInMB';e={$_.RepoCompressedSizeInMB};align='right'}, PRsCount, BuildsAndReleasesCount
+$summary | ft Organization, Project, WorkItemCount, Repo, @{n='RepoCompressedSizeInMB';e={$_.RepoCompressedSizeInMB};align='right'}, PRsCount #, BuildsAndReleasesCount
