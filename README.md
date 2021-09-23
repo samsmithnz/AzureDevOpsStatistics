@@ -2,6 +2,7 @@
 A PowerShell script to scan organizations for projects, repos, prs, artifacts, and work items
 
 ## Setup
+Download the Scan.ps1 file, located on the root of this repo. There are a few items to configure before we run: 
 1. (line 3) You need to generate a [new PAT token in Azure DevOps](https://docs.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate?view=azure-devops&tabs=preview-page). If you need to process multiple organizations, ensure the organization drop down shows "All accessible organizations"
 2. (line 4) Add an initial organization - this is what the API will log into to find all organizations/projects
 3. (line 7) Create a folder to export the CSV files to
