@@ -4,6 +4,7 @@ $pat = '' #Generate a PAT token in Azure DevOps. Select the scope to all organiz
 $InitialOrganizationName = "samsmithnz"
 $JustScanInitialOrganization = $false
 $getArtifacts = $false
+$csvLocation = "C:\users\samsm\desktop"
 
 #Create encrpyted security token
 $base64AuthInfo = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes(":$pat"))
@@ -44,9 +45,10 @@ $repos = @()
 $prs = @()
 $workItems = @()
 Foreach ($organization in $organzations){
+    $orgSummary = @()
     $orgName = $organization.name 
     Write-Host "Processing organization: $orgName"
-
+    
     # Get Artifacts
     if ($getArtifacts -eq $true)
     {
@@ -219,7 +221,7 @@ Foreach ($organization in $organzations){
                 $prs += $projectReposPRs
             #}
 
-            $summary += (New-Object -TypeName PSObject -Property @{
+            $orgSummary += (New-Object -TypeName PSObject -Property @{
                     Organization = $orgName
                     Project = $project.name
                     WorkItemCount = $projectWorkItems.values.Count
@@ -240,6 +242,8 @@ Foreach ($organization in $organzations){
         Write-Host "No access to projects in organization $orgName"
         $projects = @{}  
     }
+    $orgSummary | ft Organization, Project, WorkItemCount, TVFCRepoExists, GitRepo, @{n='GitRepoCompressedSizeInMB';e={$_.GitRepoCompressedSizeInMB};align='right'}, PRsCount | Export-Csv -Path "$csvLocation\$orgName.csv"
+    $summary += $orgSummary
 } # end Foreach ($org in $organzationsJson){
 
 #Write-Host "Total builds: $($builds.Count)" 
