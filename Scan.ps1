@@ -202,6 +202,17 @@ $workItems = @()
         }
         $repos += $projectRepos | ConvertTo-Json -Depth 10 | ConvertFrom-Json | Get-Unique -AsString
 
+        #TODO: TFVCs (no PRs)
+        #GET https://dev.azure.com/{organization}/{project}/_apis/tfvc/items?api-version=6.0
+        $tfvcRepoExists = $false
+        $uri = "https://dev.azure.com/$organization/$($project.name)/_apis/tfvc/items?api-version=6"
+        $tfvcJson = Invoke-RestMethod -Uri $uri -ContentType application/json -Headers @{Authorization=("Basic {0}" -f $base64AuthInfo)} -Method Get -ErrorAction Stop
+        $projectTFVCRepos = $tfvcJson.value | ConvertTo-Json -Depth 10 | ConvertFrom-Json
+        if ($projectTFVCRepos.Count > 0)
+        {
+            $tfvcRepoExists = $true
+        }
+
         #PRs
         #Loop through each Repo for PR's
         #GET https://dev.azure.com/{organization}/{project}/_apis/git/repositories/{repositoryId}/pullrequests?searchCriteria.status=completed&api-version=6.0
@@ -229,16 +240,15 @@ $workItems = @()
                     Organization = $organization
                     Project = $project.name
                     WorkItemCount = $projectWorkItems.values.Count
-                    Repo = $projectRepo.name
+                    GitRepo = $projectRepo.name
+                    TVFCRepoExists = $tfvcRepoExists
                     RepoCompressedSizeInMB = "{0:n2}" -f [math]::Round(($projectRepo.size / 1000000),2) # dividing by a million, not exact - but close enough
                     PRsCount = $(if($projectReposPRs.Count -eq $null) {1} else {$projectReposPRs.Count})
                     BuildsAndReleasesCount = $builds.Count + $releases.Count
                 })
         }
 
-        #TODO: TFVCs (no PRs)
-
-        #TODO: Files - Can't get file sizes...
+        #TODO: Files - Currently can not get file sizes without downloading files...
         #GET https://dev.azure.com/{organization}/{project}/_apis/git/repositories/{repositoryId}/items?api-version=6.0
         #if ($projectRepo.name -eq "SamLearnsAzure")
         #{    
@@ -248,8 +258,7 @@ $workItems = @()
         #    $files += $projectRepoFiles | ConvertTo-Json -Depth 10 | ConvertFrom-Json | Get-Unique -AsString 
         #}
         
-        Write-Host "Scanning project $($project.name) ... ($($repos.Length) repos, $($prs.Length) prs, $($files.Length) files, $($builds.Length) builds, $($releases.Length) releases, and $($workItems.Length) work items found so far)" 
-  
+        Write-Host "Scanning project $($project.name) ... ($($repos.Length) Git repos, $(if($tfvcRepoExists -eq $true) {1} else {0}) TFVC repos, $($prs.Length) prs, $($files.Length) files, $($builds.Length) builds, $($releases.Length) releases, and $($workItems.Length) work items found so far)"   
     }
 #}
 
@@ -269,13 +278,13 @@ Write-Host "Total work items: $($workItems.Count)"
 Write-Host "Total artifact feeds: $($artifacts.Count)"
 #$artifacts | Select name
 
-Write-Host "Total Repos: $($repos.Count)" 
-$TotalReposOver2GB = ($repos | Where-Object size -gt $(2 * ([Math]::Pow(1000,3)))).Count 
-Write-Host "Total Repos over 2GB: $($TotalReposOver2GB)"
-$repos | Select name, size | Where-Object size -gt $(2 * ([Math]::Pow(1000,3))) | ft
+Write-Host "Total Git repos: $($repos.Count)" 
+$TotalReposOver2GB = ($repos | Where-Object size -gt $(2 * ([Math]::Pow(1000,3)))) #1000^3 is a billion/or ~1 GB
+Write-Host "Total Git repos over 2GB: $($TotalReposOver2GB.Count)"
+$TotalReposOver2GB | Select name, size | ft
 
 Write-Host "Total PRs: $($prs.Count)" 
 Write-Host "Total Files: $($files.Count)" 
 
 Write-Host "Summary"
-$summary | ft Organization, Project, WorkItemCount, Repo, @{n='RepoCompressedSizeInMB';e={$_.RepoCompressedSizeInMB};align='right'}, PRsCount #, BuildsAndReleasesCount
+$summary | ft Organization, Project, WorkItemCount, GitRepo, @{n='RepoCompressedSizeInMB';e={$_.RepoCompressedSizeInMB};align='right'}, PRsCount, TVFCRepoExists #, BuildsAndReleasesCount
