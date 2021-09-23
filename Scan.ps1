@@ -262,7 +262,6 @@ $TotalReposOver2GB = ($repos | Where-Object size -gt $(2 * ([Math]::Pow(1000,3))
 Write-Host "Total Git repos over 2GB: $($TotalReposOver2GB.Count)"
 $TotalReposOver2GB | Select name, size | ft
 Write-Host "Total PRs: $($prs.Count)" 
-Write-Host "Total Files: $($files.Count)" 
 
 Write-Host "Summary"
 $summary | ft Organization, Project, WorkItemCount, TVFCRepoExists, GitRepo, @{n='GitRepoCompressedSizeInMB';e={$_.GitRepoCompressedSizeInMB};align='right'}, PRsCount #, BuildsAndReleasesCount
