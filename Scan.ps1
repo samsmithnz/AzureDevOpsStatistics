@@ -233,7 +233,7 @@ Foreach ($organization in $organzations){
                 })
         }
         
-        Write-Host "Scanning project $($project.name) ... ($($repos.Length) Git repos, $(if($tfvcRepoExists -eq $true) {1} else {0}) TFVC repos, $($prs.Length) prs, $($files.Length) files, $($builds.Length) builds, $($releases.Length) releases, and $($workItems.Length) work items found so far)"   
+        Write-Host "Scanning project $($project.name)... (found $($repos.Length) Git repos, $(if($tfvcRepoExists -eq $true) {1} else {0}) TFVC repos, $($prs.Length) prs, $($files.Length) files, $($builds.Length) builds, $($releases.Length) releases, and $($workItems.Length) work items found so far)"   
         } # end Foreach ($project in $projects){
     }
     catch 
