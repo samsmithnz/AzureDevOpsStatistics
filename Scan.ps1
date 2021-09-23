@@ -77,16 +77,10 @@ Foreach ($organization in $organzations){
                 LastUpdateTime = Get-Date $_.lastUpdateTime
             }
         } 
-    }
-    catch 
-    {
-        #do nothing  
-        Write-Host "No access to $orgName projects"
-        $projects = @{}  
-    }
 
-    #Loop through each project
-    Foreach ($project in $projects){
+
+        #Loop through each project
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        Foreach ($project in $projects){
 
         # Build runs
         $uri = "https://dev.azure.com/$orgName/$($project.name)/_apis/build/builds?api-version=5.1"
@@ -237,7 +231,14 @@ Foreach ($organization in $organzations){
         }
         
         Write-Host "Scanning project $($project.name) ... ($($repos.Length) Git repos, $(if($tfvcRepoExists -eq $true) {1} else {0}) TFVC repos, $($prs.Length) prs, $($files.Length) files, $($builds.Length) builds, $($releases.Length) releases, and $($workItems.Length) work items found so far)"   
-    } # end Foreach ($project in $projects){
+        } # end Foreach ($project in $projects){
+    }
+    catch 
+    {
+        #do nothing  
+        Write-Host "No access to projects in organization $orgName"
+        $projects = @{}  
+    }
 } # end Foreach ($org in $organzationsJson){
 
 #Write-Host "Total builds: $($builds.Count)" 
@@ -263,4 +264,4 @@ Write-Host "Total PRs: $($prs.Count)"
 Write-Host "Total Files: $($files.Count)" 
 
 Write-Host "Summary"
-$summary | ft Organization, Project, WorkItemCount, GitRepo, @{n='GitRepoCompressedSizeInMB';e={$_.GitRepoCompressedSizeInMB};align='right'}, PRsCount, TVFCRepoExists #, BuildsAndReleasesCount
+$summary | ft Organization, Project, WorkItemCount, TVFCRepoExists, GitRepo, @{n='GitRepoCompressedSizeInMB';e={$_.GitRepoCompressedSizeInMB};align='right'}, PRsCount #, BuildsAndReleasesCount
