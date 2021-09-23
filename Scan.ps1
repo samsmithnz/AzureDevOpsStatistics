@@ -4,7 +4,7 @@ $pat = '' #Generate a PAT token in Azure DevOps. Select the scope to all organiz
 $InitialOrganizationName = "samsmithnz"
 $JustScanInitialOrganization = $false
 $getArtifacts = $false
-$csvExportLocation = "C:\users\samsm\desktop"
+$csvExportLocation = "C:\users\samsm\desktop\AzureDevOps" #make sure the folder exists before running
 
 #Create encrpyted security token
 $base64AuthInfo = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes(":$pat"))
@@ -79,13 +79,10 @@ Foreach ($organization in $organzations){
                 Name = $_.name
                 LastUpdateTime = Get-Date $_.lastUpdateTime
             }
-        } 
+        }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                Foreach ($project in $projects){
 
-
-        #Loop through each project
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        Foreach ($project in $projects){
-
-        # Build runs
+        # Builds for project
         $uri = "https://dev.azure.com/$orgName/$($project.name)/_apis/build/builds?api-version=5.1"
         try
         {
@@ -110,7 +107,7 @@ Foreach ($organization in $organzations){
             Write-Host "No access to $orgName $($project.name) builds"   
         }   
 
-        # Release runs
+        # Releases for project
         # https://vsrm.dev.azure.com/{organization}/{project}/_apis/release/releases?api-version=5.1
         $uri = "https://vsrm.dev.azure.com/$orgName/$($project.name)/_apis/release/releases?api-version=5.1"
         try
@@ -143,7 +140,7 @@ Foreach ($organization in $organzations){
             Write-Host "No access to $orgName $($project.name) releases"     
         }
 
-        # Get work items by project
+        # Work items for project
         $projectWorkItems = @()
         $uri = "https://dev.azure.com/$orgName/$($project.name)/_apis/wit/reporting/workitemrevisions?api-version=5.1&includeDeleted=false"#&includeLatestOnly=true"
         do {
@@ -164,7 +161,7 @@ Foreach ($organization in $organzations){
         $workItems += $projectWorkItems.values | ConvertTo-Json -Depth 10 | ConvertFrom-Json | Get-Unique -AsString
 
 
-        #Repos
+        #Repos for project
         #GET https://dev.azure.com/{organization}/{project}/_apis/git/repositories?api-version=6.0
         $projectRepos = @()
         $uri = "https://dev.azure.com/$orgName/$($project.name)/_apis/git/repositories?api-version=6.0"
@@ -180,7 +177,7 @@ Foreach ($organization in $organzations){
         }
         $repos += $projectRepos | ConvertTo-Json -Depth 10 | ConvertFrom-Json | Get-Unique -AsString
 
-        #TFVCs (note there are no PRs - but should we be counting branches?)
+        #TFVCs in project (note there are no PRs - but should we be counting branches?)
         #GET https://dev.azure.com/{organization}/{project}/_apis/tfvc/items?api-version=6.0
         $tfvcRepoExists = $false
         try
@@ -199,7 +196,7 @@ Foreach ($organization in $organzations){
             Write-Host "No access to $orgName TVFC repos"  
         }
 
-        #PRs
+        #PRs in each repo
         #GET https://dev.azure.com/{organization}/{project}/_apis/git/repositories/{repositoryId}/pullrequests?searchCriteria.status=completed&api-version=6.0
         #Loop through each Repo for PR's
         Foreach ($projectRepo in $projectRepos){
@@ -233,7 +230,7 @@ Foreach ($organization in $organzations){
                 })
         }
         
-        Write-Host "Scanning project $($project.name)... (found $($repos.Length) Git repos, $(if($tfvcRepoExists -eq $true) {1} else {0}) TFVC repos, $($prs.Length) prs, $($files.Length) files, $($builds.Length) builds, $($releases.Length) releases, and $($workItems.Length) work items found so far)"   
+        Write-Host "Scanning project $($project.name)... (found $($repos.Length) Git repos, $(if($tfvcRepoExists -eq $true) {1} else {0}) TFVC repos, $($prs.Length) prs, $($builds.Length) builds, $($releases.Length) releases, and $($workItems.Length) work items found so far)"   
         } # end Foreach ($project in $projects){
     }
     catch 
@@ -242,14 +239,17 @@ Foreach ($organization in $organzations){
         Write-Host "No access to projects in organization $orgName"
         $projects = @{}  
     }
-    $orgSummary | Select-Object Organization, Project, WorkItemCount, TVFCRepoExists, GitRepo, GitRepoCompressedSizeInMB, PRsCount | ft | Export-Csv -Path "$csvExportLocation\AzureDevOpsStats_$orgName.csv"
-    $summary += $orgSummary
+    if ($orgSummary.Count -gt 0)
+    {
+        $orgSummary | Select-Object Organization, Project, WorkItemCount, TVFCRepoExists, GitRepo, GitRepoCompressedSizeInMB, PRsCount | Export-Csv -Path "$csvExportLocation\AzureDevOpsStats_$orgName.csv" -Encoding ascii -NoTypeInformation
+        $summary += $orgSummary
+    }
 } # end Foreach ($org in $organzationsJson){
 
-#Write-Host "Total builds: $($builds.Count)" 
+Write-Host "Total builds: $($builds.Count)" 
 #$builds | Select Name, Status, Result, QueueTime | Group-Object -Property Status, Result | Select Count, Name | ft
 
-#Write-Host "Total releases: $($releases.Count)" 
+Write-Host "Total releases: $($releases.Count)" 
 #$releases | Select LastEnvironmentStatus | Group-Object -Property LastEnvironmentStatus | Select Count, Name | ft
 
 Write-Host "Total work items: $($workItems.Count)" 
