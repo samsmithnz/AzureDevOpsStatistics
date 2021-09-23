@@ -2,7 +2,7 @@
 CLS
 $pat = '' #Generate a PAT token in Azure DevOps. Select the scope to all organizations if you need to scan multiple organizations
 $InitialOrganizationName = "samsmithnz"
-$JustScanInitialOrganization = $true
+$JustScanInitialOrganization = $false
 $getArtifacts = $false
 
 #Create encrpyted security token
@@ -28,11 +28,12 @@ else
 {
     #Add just the initial organization to the collection (just looping once)
     $organzations = @()
-    $oranizations += New-Object -TypeName PSObject -Property @{
+    $newOrg = New-Object -TypeName PSObject -Property @{
             id = "0"
             Name = $InitialOrganizationName
             url = ""
         }
+    $organzations += $newOrg
 }
 
 $summary = @()
