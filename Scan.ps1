@@ -4,13 +4,13 @@ $pat = '' #Generate a PAT token in Azure DevOps. Select the scope to all organiz
 $InitialOrganizationName = "samsmithnz"
 $JustScanInitialOrganization = $false
 $getArtifacts = $false
-$csvLocation = "C:\users\samsm\desktop"
+$csvExportLocation = "C:\users\samsm\desktop"
 
 #Create encrpyted security token
 $base64AuthInfo = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes(":$pat"))
 
 # Get all organizations
-if ($JustScanInitialOrganization -eq $true)
+if ($JustScanInitialOrganization -eq $false)
 {
     #This is a little dirty, and may fail in the future if Azure DevOps changes the way it lists all organizations
     $orgRequestBody = "{
@@ -242,7 +242,7 @@ Foreach ($organization in $organzations){
         Write-Host "No access to projects in organization $orgName"
         $projects = @{}  
     }
-    $orgSummary | Select-Object Organization, Project, WorkItemCount, TVFCRepoExists, GitRepo, GitRepoCompressedSizeInMB, PRsCount | ft | Export-Csv -Path "$csvLocation\AzureDevOpsStats_$orgName.csv"
+    $orgSummary | Select-Object Organization, Project, WorkItemCount, TVFCRepoExists, GitRepo, GitRepoCompressedSizeInMB, PRsCount | ft | Export-Csv -Path "$csvExportLocation\AzureDevOpsStats_$orgName.csv"
     $summary += $orgSummary
 } # end Foreach ($org in $organzationsJson){
 
