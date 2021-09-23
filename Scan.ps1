@@ -242,7 +242,7 @@ Foreach ($organization in $organzations){
         Write-Host "No access to projects in organization $orgName"
         $projects = @{}  
     }
-    $orgSummary | ft Organization, Project, WorkItemCount, TVFCRepoExists, GitRepo, @{n='GitRepoCompressedSizeInMB';e={$_.GitRepoCompressedSizeInMB};align='right'}, PRsCount | Export-Csv -Path "$csvLocation\$orgName.csv"
+    $orgSummary | Select-Object Organization, Project, WorkItemCount, TVFCRepoExists, GitRepo, GitRepoCompressedSizeInMB, PRsCount | ft | Export-Csv -Path "$csvLocation\AzureDevOpsStats_$orgName.csv"
     $summary += $orgSummary
 } # end Foreach ($org in $organzationsJson){
 
