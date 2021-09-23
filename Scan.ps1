@@ -208,7 +208,7 @@ $workItems = @()
         $uri = "https://dev.azure.com/$organization/$($project.name)/_apis/tfvc/items?api-version=6"
         $tfvcJson = Invoke-RestMethod -Uri $uri -ContentType application/json -Headers @{Authorization=("Basic {0}" -f $base64AuthInfo)} -Method Get -ErrorAction Stop
         $projectTFVCRepos = $tfvcJson.value | ConvertTo-Json -Depth 10 | ConvertFrom-Json
-        if ($projectTFVCRepos.Count > 0)
+        if ($projectTFVCRepos.Count -gt 0)
         {
             $tfvcRepoExists = $true
         }
