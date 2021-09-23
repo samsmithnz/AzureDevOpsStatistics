@@ -7,3 +7,13 @@ A PowerShell script to scan organizations for projects, repos, prs, artifacts, a
 3. (line 7) Create a folder to export the CSV files to
 ![image](https://user-images.githubusercontent.com/8389039/134520965-fff71381-507c-4ac3-bf9a-f29d07e883e2.png)
 
+## Output
+
+There are two outputs
+
+1. PowerShell output, with a summary of metrics, and a list of each organization, project, and repo details.
+![image](https://user-images.githubusercontent.com/8389039/134523388-cd6c461c-2653-4a36-a571-679e57e7022e.png)
+
+2. A CSV file download of the PowerShell output. 
+![image](https://user-images.githubusercontent.com/8389039/134527987-197cc4c6-b586-45ac-8d9a-b6a758cfcfbc.png)
+
