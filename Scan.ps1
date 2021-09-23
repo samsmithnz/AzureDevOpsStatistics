@@ -2,7 +2,7 @@
 CLS
 $pat = '' #Generate a PAT token in Azure DevOps. Select the scope to all organizations if you need to scan multiple organizations
 $InitialOrganizationName = "samsmithnz"
-$JustScanInitialOrganization = $false
+$JustScanInitialOrganization = $true
 $getArtifacts = $false
 
 #Create encrpyted security token
@@ -11,6 +11,7 @@ $base64AuthInfo = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.
 # Get all organizations
 if ($JustScanInitialOrganization -eq $true)
 {
+    #This is a little dirty, and may fail in the future if Azure DevOps changes the way it lists all organizations
     $orgRequestBody = "{
         ""contributionIds"": [""ms.vss-features.my-organizations-data-provider""],
         ""dataProviderContext"":
@@ -23,6 +24,16 @@ if ($JustScanInitialOrganization -eq $true)
     $orgResponseDetails = $orgResponse.dataProviders
     $organzations = $orgResponseDetails."ms.vss-features.my-organizations-data-provider".organizations
 }
+else
+{
+    #Add just the initial organization to the collection (just looping once)
+    $organzations = @()
+    $oranizations += New-Object -TypeName PSObject -Property @{
+            id = "0"
+            Name = $InitialOrganizationName
+            url = ""
+        }
+}
 
 $summary = @()
 $artifacts = @()
@@ -30,7 +41,6 @@ $builds = @()
 $releases = @()
 $repos = @()
 $prs = @()
-$files = @()
 $workItems = @()
 Foreach ($organization in $organzations){
     $orgName = $organization.name 
@@ -176,12 +186,20 @@ Foreach ($organization in $organzations){
         #TFVCs (note there are no PRs - but should we be counting branches?)
         #GET https://dev.azure.com/{organization}/{project}/_apis/tfvc/items?api-version=6.0
         $tfvcRepoExists = $false
-        $uri = "https://dev.azure.com/$orgName/$($project.name)/_apis/tfvc/items?api-version=6"
-        $tfvcJson = Invoke-RestMethod -Uri $uri -ContentType application/json -Headers @{Authorization=("Basic {0}" -f $base64AuthInfo)} -Method Get -ErrorAction Stop
-        $projectTFVCRepos = $tfvcJson.value | ConvertTo-Json -Depth 10 | ConvertFrom-Json
-        if ($projectTFVCRepos.Count -gt 0)
+        try
         {
-            $tfvcRepoExists = $true
+            $uri = "https://dev.azure.com/$orgName/$($project.name)/_apis/tfvc/items?api-version=6"
+            $tfvcJson = Invoke-RestMethod -Uri $uri -ContentType application/json -Headers @{Authorization=("Basic {0}" -f $base64AuthInfo)} -Method Get -ErrorAction Stop
+            $projectTFVCRepos = $tfvcJson.value | ConvertTo-Json -Depth 10 | ConvertFrom-Json
+            if ($projectTFVCRepos.Count -gt 0)
+            {
+                $tfvcRepoExists = $true
+            }
+        }
+        catch 
+        {
+            #do nothing   
+            Write-Host "No access to $orgName TVFC repos"  
         }
 
         #PRs
