@@ -18,3 +18,6 @@ There are two outputs
 2. A CSV file download of the PowerShell output. 
 ![image](https://user-images.githubusercontent.com/8389039/134527987-197cc4c6-b586-45ac-8d9a-b6a758cfcfbc.png)
 
+## Thanks
+
+Thank you to [Gregor](https://twitter.com/gregor_suttie) and [Adin](https://twitter.com/AdinErmie) for assistance in testing! 
